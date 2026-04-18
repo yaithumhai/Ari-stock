@@ -1,0 +1,97 @@
+<!doctype html>
+
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-6 font-sans">
+
+  <h1 class="text-2xl font-bold mb-4">📦 ระบบสต๊อก (พร้อมใช้จริง)</h1>
+
+  <!-- ADD PRODUCT -->
+
+  <div class="bg-white p-4 rounded-xl shadow mb-4">
+    <input id="productName" placeholder="ชื่อสินค้า"
+      class="border p-2 rounded w-full mb-2" />
+    <button onclick="addProduct()"
+      class="bg-orange-500 text-white px-4 py-2 rounded">
+      ➕ เพิ่มสินค้า
+    </button>
+  </div>
+
+  <!-- PRODUCT LIST -->
+
+  <div class="bg-white p-4 rounded-xl shadow mb-4">
+    <h2 class="font-semibold mb-2">📋 รายการสินค้า</h2>
+    <ul id="productList"></ul>
+  </div>
+
+  <!-- SALES -->
+
+  <div class="bg-white p-4 rounded-xl shadow">
+    <input id="cash" type="number" placeholder="เงินสด"
+      class="border p-2 rounded w-full mb-2" />
+    <button onclick="saveSales()"
+      class="bg-green-600 text-white px-4 py-2 rounded">
+      💰 บันทึกยอดขาย
+    </button>
+  </div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyMVsF0O-AURKWTKjbDw1CcmTIRKcVqRwVf0XE8k-3nYjw9XWJ3yNB5XVJ-pGBDsPUQ/exec";
+
+let products = JSON.parse(localStorage.getItem("products") || "[]");
+
+function render() {
+  const list = document.getElementById("productList");
+  list.innerHTML = "";
+  products.forEach((p,i)=>{
+    list.innerHTML += `
+      <li class="flex justify-between border-b py-1">
+        ${p}
+        <button onclick="remove(${i})" class="text-red-500">ลบ</button>
+      </li>
+    `;
+  });
+}
+
+function addProduct() {
+  const name = document.getElementById("productName").value;
+  if(!name) return alert("กรอกชื่อสินค้า");
+
+  products.push(name);
+  localStorage.setItem("products", JSON.stringify(products));
+  render();
+
+  fetch(API_URL, {
+    method:"POST",
+    body: JSON.stringify({action:"addProduct", name})
+  });
+}
+
+function remove(i) {
+  products.splice(i,1);
+  localStorage.setItem("products", JSON.stringify(products));
+  render();
+}
+
+function saveSales() {
+  const cash = document.getElementById("cash").value;
+
+  fetch(API_URL, {
+    method:"POST",
+    body: JSON.stringify({action:"sales", cash})
+  });
+
+  alert("บันทึกแล้ว");
+}
+
+render();
+</script>
+
+</body>
+</html>
