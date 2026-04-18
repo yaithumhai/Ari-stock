@@ -1,97 +1,1054 @@
 <!doctype html>
-
-<html lang="th">
-<head>
+<html lang="th" class="h-full">
+ <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stock App</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-
-<body class="bg-gray-100 p-6 font-sans">
-
-  <h1 class="text-2xl font-bold mb-4">📦 ระบบสต๊อก (พร้อมใช้จริง)</h1>
-
-  <!-- ADD PRODUCT -->
-
-  <div class="bg-white p-4 rounded-xl shadow mb-4">
-    <input id="productName" placeholder="ชื่อสินค้า"
-      class="border p-2 rounded w-full mb-2" />
-    <button onclick="addProduct()"
-      class="bg-orange-500 text-white px-4 py-2 rounded">
-      ➕ เพิ่มสินค้า
-    </button>
-  </div>
-
-  <!-- PRODUCT LIST -->
-
-  <div class="bg-white p-4 rounded-xl shadow mb-4">
-    <h2 class="font-semibold mb-2">📋 รายการสินค้า</h2>
-    <ul id="productList"></ul>
-  </div>
-
-  <!-- SALES -->
-
-  <div class="bg-white p-4 rounded-xl shadow">
-    <input id="cash" type="number" placeholder="เงินสด"
-      class="border p-2 rounded w-full mb-2" />
-    <button onclick="saveSales()"
-      class="bg-green-600 text-white px-4 py-2 rounded">
-      💰 บันทึกยอดขาย
-    </button>
-  </div>
-
-<script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyMVsF0O-AURKWTKjbDw1CcmTIRKcVqRwVf0XE8k-3nYjw9XWJ3yNB5XVJ-pGBDsPUQ/exec";
-
-let products = JSON.parse(localStorage.getItem("products") || "[]");
-
-function render() {
-  const list = document.getElementById("productList");
-  list.innerHTML = "";
-  products.forEach((p,i)=>{
-    list.innerHTML += `
-      <li class="flex justify-between border-b py-1">
-        ${p}
-        <button onclick="remove(${i})" class="text-red-500">ลบ</button>
-      </li>
-    `;
-  });
+  <title>ระบบเชคสต๊อกประจำวัน สาขา อารีย์</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sarabun: ['Sarabun', 'sans-serif'] }
+    }
+  }
 }
-
-function addProduct() {
-  const name = document.getElementById("productName").value;
-  if(!name) return alert("กรอกชื่อสินค้า");
-
-  products.push(name);
-  localStorage.setItem("products", JSON.stringify(products));
-  render();
-
-  fetch(API_URL, {
-    method:"POST",
-    body: JSON.stringify({action:"addProduct", name})
-  });
-}
-
-function remove(i) {
-  products.splice(i,1);
-  localStorage.setItem("products", JSON.stringify(products));
-  render();
-}
-
-function saveSales() {
-  const cash = document.getElementById("cash").value;
-
-  fetch(API_URL, {
-    method:"POST",
-    body: JSON.stringify({action:"sales", cash})
-  });
-
-  alert("บันทึกแล้ว");
-}
-
-render();
 </script>
+  <style>
+html, body { height: 100%; margin: 0; overflow: hidden; }
+.app-wrapper { height: 100%; width: 100%; overflow: hidden; display: flex; flex-direction: column; }
+.sidebar-nav { background: linear-gradient(180deg, #f97316, #ea580c); }
+.orange-btn { background: linear-gradient(135deg, #f97316, #ea580c); }
+.orange-btn:hover { background: linear-gradient(135deg, #ea580c, #c2410c); }
+.tab-active { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
+.tab-inactive { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+.tab-inactive:hover { background: #fff7ed; }
+.card-shadow { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.content-area { overflow-y: auto; flex: 1; }
+.sidebar-collapsed { transform: translateX(-100%); }
+@media(min-width:1024px) { .sidebar-collapsed { transform: translateX(0); } }
+.toast-msg {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  padding: 12px 24px; border-radius: 8px; color: white; font-family: 'Sarabun';
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full font-sarabun" style="background:#e8f5e9;">
+  <div class="app-wrapper" id="app"><!-- Mobile Header -->
+   <header class="lg:hidden flex items-center justify-between px-4 py-3 text-white" style="background:linear-gradient(135deg,#f97316,#ea580c);"><button onclick="toggleSidebar()" class="p-1"><i data-lucide="menu" class="w-6 h-6"></i></button>
+    <h1 class="text-sm font-bold truncate" id="mobileTitle">ระบบเชคสต๊อก สาขา อารีย์</h1>
+    <div class="w-6"></div>
+   </header>
+   <div class="flex flex-1 overflow-hidden"><!-- Sidebar -->
+    <aside id="sidebar" class="sidebar-nav w-64 min-w-[256px] flex-shrink-0 text-white flex flex-col fixed lg:static h-full z-50 transition-transform duration-300 sidebar-collapsed lg:transform-none">
+     <div class="p-4 border-b border-orange-400/40">
+      <div class="flex items-center gap-2 mb-1"><span class="text-2xl">📦</span>
+       <h1 class="text-base font-bold leading-tight" id="sidebarTitle">ระบบเชคสต๊อกประจำวัน</h1>
+      </div>
+      <p class="text-xs text-orange-100" id="sidebarBranch">สาขา อารีย์</p>
+     </div>
+     <nav class="flex-1 p-3 space-y-1 overflow-y-auto"><button onclick="navigate('home')" data-nav="home" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="home" class="w-5 h-5"></i> หน้าแรก </button> <button onclick="navigate('instock')" data-nav="instock" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="package-plus" class="w-5 h-5"></i> สินค้าเข้า </button> <button onclick="navigate('overstock')" data-nav="overstock" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="package-minus" class="w-5 h-5"></i> สินค้าคงเหลือ/เสีย </button> <button onclick="navigate('sales')" data-nav="sales" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="banknote" class="w-5 h-5"></i> ยอดขายวันนี้ </button> <button onclick="navigate('report')" data-nav="report" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="bar-chart-3" class="w-5 h-5"></i> สรุปยอดขาย </button> <button onclick="navigate('addproduct')" data-nav="addproduct" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/20"> <i data-lucide="plus-circle" class="w-5 h-5"></i> เพิ่มสินค้า </button>
+     </nav>
+     <div class="p-3 border-t border-orange-400/40 text-xs text-orange-200 text-center">
+      📅 <span id="todayDate"></span>
+     </div>
+    </aside><!-- Overlay for mobile sidebar -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div><!-- Main Content -->
+    <main class="flex-1 overflow-hidden flex flex-col">
+     <div class="content-area p-4 lg:p-6" id="mainContent"><!-- HOME PAGE -->
+      <div id="page-home" class="page">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">🏠 <span id="homeTitle">ระบบเชคสต๊อกประจำวัน สาขา อารีย์</span></h2>
+       <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-6"><button onclick="navigate('instock')" class="card-shadow rounded-xl p-4 lg:p-6 text-center transition-transform hover:scale-105 bg-white border-l-4 border-orange-400">
+         <div class="text-3xl mb-2">
+          📥
+         </div><p class="font-semibold text-gray-700 text-sm">สินค้าเข้า</p><p class="text-xs text-gray-400 mt-1" id="statInstock">0 รายการ</p></button> <button onclick="navigate('overstock')" class="card-shadow rounded-xl p-4 lg:p-6 text-center transition-transform hover:scale-105 bg-white border-l-4 border-green-400">
+         <div class="text-3xl mb-2">
+          📦
+         </div><p class="font-semibold text-gray-700 text-sm">สินค้าคงเหลือ/เสีย</p><p class="text-xs text-gray-400 mt-1" id="statOverstock">0 รายการ</p></button> <button onclick="navigate('sales')" class="card-shadow rounded-xl p-4 lg:p-6 text-center transition-transform hover:scale-105 bg-white border-l-4 border-blue-400">
+         <div class="text-3xl mb-2">
+          💰
+         </div><p class="font-semibold text-gray-700 text-sm">ยอดขายวันนี้</p><p class="text-xs text-gray-400 mt-1" id="statSales">฿0</p></button> <button onclick="navigate('report')" class="card-shadow rounded-xl p-4 lg:p-6 text-center transition-transform hover:scale-105 bg-white border-l-4 border-purple-400">
+         <div class="text-3xl mb-2">
+          📊
+         </div><p class="font-semibold text-gray-700 text-sm">สรุปยอดขาย</p><p class="text-xs text-gray-400 mt-1">ดูรายงาน</p></button> <button onclick="navigate('addproduct')" class="card-shadow rounded-xl p-4 lg:p-6 text-center transition-transform hover:scale-105 bg-white border-l-4 border-yellow-400">
+         <div class="text-3xl mb-2">
+          ➕
+         </div><p class="font-semibold text-gray-700 text-sm">เพิ่มสินค้า</p><p class="text-xs text-gray-400 mt-1" id="statProducts">0 รายการ</p></button>
+       </div><!-- Recent Activity -->
+       <div class="bg-white rounded-xl card-shadow p-4">
+        <h3 class="font-semibold text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="clock" class="w-4 h-4"></i> กิจกรรมล่าสุด</h3>
+        <div id="recentActivity" class="space-y-2 text-sm text-gray-500">
+         <p class="text-center py-4">ยังไม่มีกิจกรรม</p>
+        </div>
+       </div>
+      </div><!-- INSTOCK PAGE -->
+      <div id="page-instock" class="page hidden">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">📥 สินค้าเข้า</h2>
+       <div class="bg-white rounded-xl card-shadow p-4 lg:p-6">
+        <div class="mb-4"><label class="block text-sm font-medium text-gray-600 mb-1">📅 วันที่</label> <input type="date" id="instockDate" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 focus:border-orange-400 outline-none">
+        </div>
+        <div id="instockList" class="space-y-3 mb-4">
+         <p class="text-gray-400 text-sm text-center py-4">กรุณาเพิ่มสินค้าก่อน</p>
+        </div>
+        <div class="flex gap-2"><button onclick="saveInstock()" class="orange-btn text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="save" class="w-4 h-4"></i> บันทึก </button> <button onclick="saveInstockToSheet()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="cloud-upload" class="w-4 h-4"></i> บันทึกลง Google Sheet </button>
+        </div>
+       </div>
+      </div><!-- OVERSTOCK PAGE -->
+      <div id="page-overstock" class="page hidden">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">📦 สินค้าคงเหลือ / เสีย</h2>
+       <div class="bg-white rounded-xl card-shadow p-4 lg:p-6">
+        <div class="mb-4"><label class="block text-sm font-medium text-gray-600 mb-1">📅 วันที่</label> <input type="date" id="overstockDate" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 focus:border-orange-400 outline-none">
+        </div>
+        <div id="overstockList" class="space-y-3 mb-4">
+         <p class="text-gray-400 text-sm text-center py-4">กรุณาเพิ่มสินค้าก่อน</p>
+        </div>
+        <div class="flex gap-2"><button onclick="saveOverstock()" class="orange-btn text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="check-circle" class="w-4 h-4"></i> ยืนยัน </button> <button onclick="saveOverstockToSheet()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="cloud-upload" class="w-4 h-4"></i> บันทึกลง Google Sheet </button>
+        </div>
+       </div>
+      </div><!-- SALES PAGE -->
+      <div id="page-sales" class="page hidden">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">💰 ยอดขายวันนี้</h2>
+       <div class="bg-white rounded-xl card-shadow p-4 lg:p-6">
+        <div class="mb-4"><label class="block text-sm font-medium text-gray-600 mb-1">📅 วันที่</label> <input type="date" id="salesDate" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 focus:border-orange-400 outline-none">
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesCash">💵 เงินสด</label> <input type="number" id="salesCash" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesGrab">🚗 Grab</label> <input type="number" id="salesGrab" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesLineman">📦 Lineman</label> <input type="number" id="salesLineman" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesShopee">🛍️ Shopee</label> <input type="number" id="salesShopee" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesTransfer">📱 ยอดโอน</label> <input type="number" id="salesTransfer" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+         <div><label class="block text-sm font-medium text-gray-600 mb-1" for="salesChange">💵 เงินทอน</label> <input type="number" id="salesChange" placeholder="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+         </div>
+        </div>
+        <div class="border-t pt-4 mb-4">
+         <h3 class="font-semibold text-gray-700 mb-3">📋 ค่าใช้จ่าย</h3>
+         <div id="expenseList" class="space-y-2 mb-3"></div><button onclick="addExpenseRow()" class="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"> <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มค่าใช้จ่าย </button>
+        </div>
+        <div class="flex gap-2"><button onclick="saveSales()" class="orange-btn text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="check-circle" class="w-4 h-4"></i> ยืนยัน </button> <button onclick="saveSalesToSheet()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="cloud-upload" class="w-4 h-4"></i> บันทึกลง Google Sheet </button>
+        </div>
+       </div>
+      </div><!-- REPORT PAGE -->
+      <div id="page-report" class="page hidden">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">📊 สรุปยอดขาย</h2>
+       <div class="bg-white rounded-xl card-shadow p-4 mb-4"><label class="block text-sm font-medium text-gray-600 mb-2">📅 เลือกวันที่เพื่อดูสรุป</label>
+        <div class="flex gap-2 flex-wrap"><input type="date" id="reportDate" class="flex-1 min-w-[150px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 focus:border-orange-400 outline-none"> <button onclick="loadReportByDate()" class="orange-btn text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="search" class="w-4 h-4"></i> ค้นหา </button> <button onclick="loadTodayReport()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"> <i data-lucide="calendar" class="w-4 h-4"></i> วันนี้ </button>
+        </div>
+       </div>
+       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">เงินสด</p>
+         <p class="text-lg font-bold text-gray-800" id="rptCash">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">Grab</p>
+         <p class="text-lg font-bold text-gray-800" id="rptGrab">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">Lineman</p>
+         <p class="text-lg font-bold text-gray-800" id="rptLineman">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">Shopee</p>
+         <p class="text-lg font-bold text-gray-800" id="rptShopee">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">ยอดโอน</p>
+         <p class="text-lg font-bold text-gray-800" id="rptTransfer">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">เงินทอน</p>
+         <p class="text-lg font-bold text-gray-800" id="rptChange">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">ค่าใช้จ่าย</p>
+         <p class="text-lg font-bold text-red-500" id="rptExpense">฿0</p>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-3 text-center">
+         <p class="text-xs text-gray-400">รวมทั้งหมด</p>
+         <p class="text-lg font-bold text-blue-600" id="rptTotal">฿0</p>
+        </div>
+       </div>
+       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="bg-white rounded-xl card-shadow p-4">
+         <h3 class="font-semibold text-gray-700 mb-3">📥 รายการสินค้าเข้า</h3>
+         <div id="rptInstock" class="text-sm space-y-1 max-h-48 overflow-y-auto">
+          <p class="text-gray-400 text-center">ไม่มีข้อมูล</p>
+         </div>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-4">
+         <h3 class="font-semibold text-gray-700 mb-3">📦 รายการสินค้าคงเหลือ</h3>
+         <div id="rptOverstock" class="text-sm space-y-1 max-h-48 overflow-y-auto">
+          <p class="text-gray-400 text-center">ไม่มีข้อมูล</p>
+         </div>
+        </div>
+       </div>
+       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl card-shadow p-4">
+         <h3 class="font-semibold text-gray-700 mb-3">📊 กราฟสรุปยอดขาย</h3>
+         <canvas id="salesChart" height="200"></canvas>
+        </div>
+        <div class="bg-white rounded-xl card-shadow p-4">
+         <h3 class="font-semibold text-gray-700 mb-3">🍩 สัดส่วนรายรับ</h3>
+         <canvas id="pieChart" height="200"></canvas>
+        </div>
+       </div>
+      </div><!-- ADD PRODUCT PAGE -->
+      <div id="page-addproduct" class="page hidden">
+       <h2 class="text-xl font-bold text-gray-800 mb-4">➕ เพิ่มสินค้า</h2>
+       <div class="bg-white rounded-xl card-shadow p-4 lg:p-6 mb-4">
+        <div class="mb-4"><label class="block text-sm font-medium text-gray-600 mb-1" for="newProductName">ชื่อสินค้า</label> <input type="text" id="newProductName" placeholder="พิมพ์ชื่อสินค้า..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4"><button onclick="addProduct()" class="orange-btn text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"> <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มสินค้า </button> <button onclick="saveProductToSheet()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"> <i data-lucide="cloud-upload" class="w-4 h-4"></i> บันทึกลง Google Sheet </button> <button onclick="promptAdminForSheetData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"> <i data-lucide="cloud-download" class="w-4 h-4"></i> เรียกดูข้อมูล Google Sheet </button>
+        </div>
+        <div class="border-t pt-4">
+         <h3 class="font-semibold text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="upload" class="w-4 h-4"></i> นำเข้า CSV</h3>
+         <p class="text-xs text-gray-500 mb-2">📋 รูปแบบ: ชื่อสินค้า (คนละบรรทัด) หรือ CSV ที่มีคอลัมน์ "name" หรือ "product_name"</p>
+         <div class="flex gap-2 flex-wrap"><input type="file" id="csvFile" accept=".csv" class="flex-1 min-w-[150px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-300 outline-none"> <button onclick="importCSV()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"> <i data-lucide="file" class="w-4 h-4"></i> นำเข้า </button>
+         </div>
+        </div>
+       </div>
+       <div class="bg-white rounded-xl card-shadow p-4">
+        <h3 class="font-semibold text-gray-700 mb-3">📋 รายการสินค้าทั้งหมด</h3>
+        <div id="productListDisplay" class="space-y-2">
+         <p class="text-gray-400 text-sm text-center py-4">ยังไม่มีสินค้า</p>
+        </div>
+       </div>
+      </div>
+     </div>
+    </main>
+   </div>
+  </div>
+  <script>
+// ===== STATE =====
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyT40km9pPggrgsqsIP4qWG6N3jzQM2pWWAmyiCEqwfTXK63hzKx7bzyAClobWrHtaIkw/exec';
+const SHEET_ID = '1b0g5GWsAZ1G6b5LYAjrlDXMLEX-tsAZHgI3cOoYnA54';
+const ADMIN_CODE = '121231';
 
-</body>
+let allData = [];
+let products = JSON.parse(localStorage.getItem('stock_products') || '[]');
+let instockData = JSON.parse(localStorage.getItem('stock_instock') || '[]');
+let overstockData = JSON.parse(localStorage.getItem('stock_overstock') || '[]');
+let salesData = JSON.parse(localStorage.getItem('stock_sales') || '{}');
+let currentPage = 'home';
+let salesChartInstance = null;
+let pieChartInstance = null;
+
+// ===== INIT =====
+function initApp() {
+  const today = new Date().toISOString().split('T')[0];
+  const dateEls = ['instockDate', 'overstockDate', 'salesDate'];
+  dateEls.forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  
+  addExpenseRow();
+  navigate('home');
+  renderProducts();
+  updateStats();
+  lucide.createIcons();
+}
+
+// ===== DATA SDK =====
+const dataHandler = {
+  onDataChanged(data) {
+    allData = data;
+    // Sync local from SDK data
+    products = data.filter(d => d.type === 'product').map(d => d.name);
+    localStorage.setItem('stock_products', JSON.stringify(products));
+    renderProducts();
+    renderInstockForm();
+    renderOverstockForm();
+    updateStats();
+  }
+};
+
+(async () => {
+  if (window.dataSdk) {
+    const r = await window.dataSdk.init(dataHandler);
+    if (!r.isOk) console.error('Data SDK init failed');
+  }
+  initApp();
+})();
+
+// ===== ELEMENT SDK =====
+const defaultConfig = {
+  system_title: 'ระบบเชคสต๊อกประจำวัน สาขา อารีย์',
+  branch_name: 'สาขา อารีย์',
+  background_color: '#e8f5e9',
+  surface_color: '#ffffff',
+  text_color: '#1f2937',
+  primary_action_color: '#f97316',
+  secondary_action_color: '#16a34a'
+};
+
+function applyConfig(config) {
+  const c = { ...defaultConfig, ...config };
+  document.body.style.background = c.background_color;
+  document.querySelectorAll('.bg-white').forEach(el => el.style.backgroundColor = c.surface_color);
+  const title = c.system_title || defaultConfig.system_title;
+  const el1 = document.getElementById('homeTitle');
+  const el2 = document.getElementById('sidebarTitle');
+  const el3 = document.getElementById('mobileTitle');
+  const el4 = document.getElementById('sidebarBranch');
+  if(el1) el1.textContent = title;
+  if(el2) el2.textContent = title.replace(/ สาขา.*/, '');
+  if(el3) el3.textContent = 'ระบบเชคสต๊อก ' + (c.branch_name || '');
+  if(el4) el4.textContent = c.branch_name || '';
+}
+
+if (window.elementSdk) {
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: async (config) => applyConfig(config),
+    mapToCapabilities: (config) => ({
+      recolorables: [
+        { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+        { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+        { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+        { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+        { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+      ],
+      borderables: [],
+      fontEditable: undefined,
+      fontSizeable: undefined
+    }),
+    mapToEditPanelValues: (config) => new Map([
+      ['system_title', config.system_title || defaultConfig.system_title],
+      ['branch_name', config.branch_name || defaultConfig.branch_name]
+    ])
+  });
+}
+
+// ===== NAVIGATION =====
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.remove('hidden');
+  
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('bg-white/30');
+    if (btn.dataset.nav === page) btn.classList.add('bg-white/30');
+  });
+  
+  // Close mobile sidebar
+  if (window.innerWidth < 1024) {
+    document.getElementById('sidebar').classList.add('sidebar-collapsed');
+    document.getElementById('sidebarOverlay').classList.add('hidden');
+  }
+  
+  if (page === 'report') renderReport();
+  if (page === 'instock') renderInstockForm();
+  if (page === 'overstock') renderOverstockForm();
+  lucide.createIcons();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.toggle('sidebar-collapsed');
+  ov.classList.toggle('hidden');
+}
+
+// ===== PRODUCTS =====
+function renderProducts() {
+  const container = document.getElementById('productListDisplay');
+  if (!container) return;
+  if (products.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">ยังไม่มีสินค้า</p>';
+    return;
+  }
+  container.innerHTML = products.map((p, i) => `
+    <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+      <span class="text-sm text-gray-700">${i+1}. ${p}</span>
+      <button onclick="removeProduct(${i})" class="text-red-400 hover:text-red-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+    </div>
+  `).join('');
+  lucide.createIcons();
+}
+
+async function addProduct() {
+  const input = document.getElementById('newProductName');
+  const name = input.value.trim();
+  if (!name) {
+    Swal.fire({ icon:'warning', title:'กรุณากรอกชื่อสินค้า', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  if (products.includes(name)) {
+    Swal.fire({ icon:'info', title:'สินค้านี้มีอยู่แล้ว', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  products.push(name);
+  localStorage.setItem('stock_products', JSON.stringify(products));
+  
+  if (window.dataSdk && allData.filter(d=>d.type==='product').length < 999) {
+    await window.dataSdk.create({ type:'product', name, quantity:0, amount:0, note:'', date: new Date().toISOString(), category:'product' });
+  }
+  
+  input.value = '';
+  renderProducts();
+  updateStats();
+  Swal.fire({ icon:'success', title:'เพิ่มสินค้าสำเร็จ!', text: name, confirmButtonColor:'#f97316', timer:1500, showConfirmButton:false });
+}
+
+async function removeProduct(index) {
+  const name = products[index];
+  const result = await Swal.fire({
+    title: 'ลบสินค้า?', text: `ต้องการลบ "${name}" หรือไม่?`,
+    icon: 'question', showCancelButton: true,
+    confirmButtonColor: '#ef4444', cancelButtonColor: '#9ca3af',
+    confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก'
+  });
+  if (!result.isConfirmed) return;
+  
+  Swal.fire({ title:'กำลังลบ...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+  
+  try {
+    // Delete from Google Sheet first (most important)
+    await sendToGoogleSheet({ productName: name, branch:'สาขา อารีย์' }, 'deleteProduct');
+    
+    // Then remove from SDK
+    if (window.dataSdk) {
+      const sdkRecords = allData.filter(d => d.type === 'product' && d.name === name);
+      for (const sdkRecord of sdkRecords) {
+        try {
+          await window.dataSdk.delete(sdkRecord);
+        } catch(err) {
+          console.error('SDK delete error:', err);
+        }
+      }
+    }
+    
+    // Remove from local
+    products.splice(index, 1);
+    localStorage.setItem('stock_products', JSON.stringify(products));
+    
+    // Refresh all 3 pages
+    renderProducts();
+    renderInstockForm();
+    renderOverstockForm();
+    updateStats();
+    lucide.createIcons();
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'ลบสินค้าสำเร็จ!',
+      text: name + ' ถูกลบจาก Google Sheet และระบบ',
+      confirmButtonColor: '#f97316',
+      timer: 2000,
+      showConfirmButton: false
+    });
+  } catch(e) {
+    console.error('Delete error:', e);
+    Swal.fire({
+      icon: 'error',
+      title: 'ข้อผิดพลาด',
+      text: 'ลบสินค้าไม่สำเร็จ กรุณาลองใหม่',
+      confirmButtonColor: '#ef4444'
+    });
+  }
+}
+
+function importCSV() {
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    Swal.fire({ icon:'warning', title:'เลือกไฟล์ CSV ก่อน', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const content = e.target.result;
+      const lines = content.trim().split('\n');
+      
+      if (lines.length === 0) {
+        Swal.fire({ icon:'warning', title:'ไฟล์ว่าง', confirmButtonColor:'#f97316', timer:2000 });
+        return;
+      }
+      
+      let importedProducts = [];
+      
+      // Check if first line is CSV header
+      const firstLine = lines[0].toLowerCase();
+      const isCSV = firstLine.includes('name') || firstLine.includes('product') || firstLine.includes(',');
+      
+      if (isCSV && lines[0].includes(',')) {
+        // Parse CSV format
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const nameIndex = headers.findIndex(h => h === 'name' || h === 'product_name' || h === 'ชื่อสินค้า');
+        
+        if (nameIndex === -1) {
+          Swal.fire({ icon:'error', title:'ไม่พบคอลัมน์ชื่อสินค้า', text:'ตรวจสอบให้แน่ใจว่าไฟล์มีคอลัมน์ "name" หรือ "product_name"', confirmButtonColor:'#ef4444' });
+          return;
+        }
+        
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].split(',').map(p => p.trim());
+          if (parts[nameIndex] && parts[nameIndex].length > 0) {
+            importedProducts.push(parts[nameIndex]);
+          }
+        }
+      } else {
+        // Simple line-by-line format
+        importedProducts = lines.filter(line => line.trim().length > 0);
+      }
+      
+      if (importedProducts.length === 0) {
+        Swal.fire({ icon:'info', title:'ไม่พบสินค้าใดๆ', confirmButtonColor:'#f97316', timer:2000 });
+        return;
+      }
+      
+      // Show preview and confirmation
+      const preview = importedProducts.slice(0, 5).map(p => `<li>${p}</li>`).join('');
+      const remaining = importedProducts.length > 5 ? `<li>...และอีก ${importedProducts.length - 5} รายการ</li>` : '';
+      
+      const result = await Swal.fire({
+        title: `✅ พบสินค้า ${importedProducts.length} รายการ`,
+        html: `<div style="text-align:left; max-height:200px; overflow-y:auto;"><ul style="list-style:inside; padding:0;">${preview}${remaining}</ul></div>`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'นำเข้า',
+        confirmButtonColor: '#8b5cf6',
+        cancelButtonText: 'ยกเลิก'
+      });
+      
+      if (!result.isConfirmed) return;
+      
+      // Add products
+      Swal.fire({ title:'กำลังนำเข้า...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+      
+      let addedCount = 0;
+      for (const productName of importedProducts) {
+        if (!products.includes(productName)) {
+          products.push(productName);
+          
+          if (window.dataSdk && allData.filter(d => d.type === 'product').length < 999) {
+            const r = await window.dataSdk.create({ type:'product', name: productName, quantity:0, amount:0, note:'', date: new Date().toISOString(), category:'product' });
+            if (r.isOk) addedCount++;
+          } else {
+            addedCount++;
+          }
+        }
+      }
+      
+      localStorage.setItem('stock_products', JSON.stringify(products));
+      fileInput.value = '';
+      renderProducts();
+      renderInstockForm();
+      renderOverstockForm();
+      updateStats();
+      lucide.createIcons();
+      
+      Swal.fire({
+        icon: 'success',
+        title: `✅ นำเข้าสำเร็จ!`,
+        text: `เพิ่มสินค้า ${addedCount} รายการ`,
+        confirmButtonColor: '#8b5cf6',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch(error) {
+      console.error('CSV import error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: '❌ เกิดข้อผิดพลาด',
+        text: 'ไม่สามารถนำเข้า CSV ได้ กรุณาตรวจสอบรูปแบบไฟล์',
+        confirmButtonColor: '#ef4444'
+      });
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== INSTOCK FORM =====
+function renderInstockForm() {
+  const container = document.getElementById('instockList');
+  if (!container) return;
+  if (products.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">กรุณาเพิ่มสินค้าก่อน</p>';
+    return;
+  }
+  container.innerHTML = products.map((p, i) => `
+    <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+      <span class="text-sm text-gray-700 flex-1">${p}</span>
+      <input type="number" id="instock_${i}" placeholder="0" min="0" class="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:ring-2 focus:ring-orange-300 outline-none">
+    </div>
+  `).join('');
+}
+
+async function saveInstock() {
+  const date = document.getElementById('instockDate').value;
+  const entries = [];
+  products.forEach((p, i) => {
+    const val = parseInt(document.getElementById('instock_' + i)?.value) || 0;
+    if (val > 0) entries.push({ name: p, quantity: val });
+  });
+  if (entries.length === 0) {
+    Swal.fire({ icon:'warning', title:'กรุณากรอกจำนวนสินค้า', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  
+  const record = { date, entries };
+  instockData.push(record);
+  localStorage.setItem('stock_instock', JSON.stringify(instockData));
+  
+  // Save to Data SDK
+  for (const e of entries) {
+    if (allData.length < 999 && window.dataSdk) {
+      await window.dataSdk.create({ type:'instock', name: e.name, quantity: e.quantity, amount:0, note:'', date, category:'instock' });
+    }
+  }
+  
+  updateStats();
+  Swal.fire({ icon:'success', title:'บันทึกสินค้าเข้าสำเร็จ!', confirmButtonColor:'#f97316', timer:1500, showConfirmButton:false });
+  // Clear inputs
+  products.forEach((_, i) => { const el = document.getElementById('instock_' + i); if(el) el.value = ''; });
+}
+
+// ===== OVERSTOCK FORM =====
+function renderOverstockForm() {
+  const container = document.getElementById('overstockList');
+  if (!container) return;
+  if (products.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">กรุณาเพิ่มสินค้าก่อน</p>';
+    return;
+  }
+  container.innerHTML = products.map((p, i) => `
+    <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+      <span class="text-sm text-gray-700 flex-1">${p}</span>
+      <input type="number" id="overstock_${i}" placeholder="0" min="0" class="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:ring-2 focus:ring-orange-300 outline-none">
+    </div>
+  `).join('');
+}
+
+async function saveOverstock() {
+  const date = document.getElementById('overstockDate').value;
+  const entries = [];
+  products.forEach((p, i) => {
+    const val = parseInt(document.getElementById('overstock_' + i)?.value) || 0;
+    if (val > 0) entries.push({ name: p, quantity: val });
+  });
+  if (entries.length === 0) {
+    Swal.fire({ icon:'warning', title:'กรุณากรอกจำนวนสินค้า', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  
+  overstockData.push({ date, entries });
+  localStorage.setItem('stock_overstock', JSON.stringify(overstockData));
+  
+  for (const e of entries) {
+    if (allData.length < 999 && window.dataSdk) {
+      await window.dataSdk.create({ type:'overstock', name: e.name, quantity: e.quantity, amount:0, note:'', date, category:'overstock' });
+    }
+  }
+  
+  updateStats();
+  Swal.fire({ icon:'success', title:'บันทึกสินค้าคงเหลือสำเร็จ!', confirmButtonColor:'#f97316', timer:1500, showConfirmButton:false });
+  products.forEach((_, i) => { const el = document.getElementById('overstock_' + i); if(el) el.value = ''; });
+}
+
+// ===== SALES =====
+let expenseCount = 0;
+function addExpenseRow() {
+  const container = document.getElementById('expenseList');
+  if (!container) return;
+  const id = expenseCount++;
+  const row = document.createElement('div');
+  row.className = 'flex gap-2 items-center';
+  row.id = 'expense_row_' + id;
+  row.innerHTML = `
+    <input type="number" placeholder="จำนวนเงิน" class="expense-amount flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+    <input type="text" placeholder="หมายเหตุ" class="expense-note flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-orange-300 outline-none">
+    <button onclick="document.getElementById('expense_row_${id}').remove()" class="text-red-400 hover:text-red-600 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+  `;
+  container.appendChild(row);
+  lucide.createIcons();
+}
+
+async function saveSales() {
+  const date = document.getElementById('salesDate').value;
+  const change = parseFloat(document.getElementById('salesChange').value) || 0;
+  const transfer = parseFloat(document.getElementById('salesTransfer').value) || 0;
+  const cash = parseFloat(document.getElementById('salesCash').value) || 0;
+  const grab = parseFloat(document.getElementById('salesGrab').value) || 0;
+  const lineman = parseFloat(document.getElementById('salesLineman').value) || 0;
+  const shopee = parseFloat(document.getElementById('salesShopee').value) || 0;
+  
+  const expenses = [];
+  document.querySelectorAll('#expenseList > div').forEach(row => {
+    const amt = parseFloat(row.querySelector('.expense-amount')?.value) || 0;
+    const note = row.querySelector('.expense-note')?.value || '';
+    if (amt > 0) expenses.push({ amount: amt, note });
+  });
+  
+  const record = { date, change, transfer, cash, grab, lineman, shopee, expenses, totalExpense: expenses.reduce((s,e) => s + e.amount, 0) };
+  salesData = record;
+  localStorage.setItem('stock_sales', JSON.stringify(salesData));
+  
+  if (window.dataSdk && allData.length < 999) {
+    const totalSales = cash + transfer + grab + lineman + shopee;
+    await window.dataSdk.create({ type:'sales', name:'daily_sales', quantity:0, amount: totalSales, note: JSON.stringify({ change, transfer, cash, grab, lineman, shopee, expenses }), date, category:'sales' });
+  }
+  
+  updateStats();
+  Swal.fire({ icon:'success', title:'บันทึกยอดขายสำเร็จ!', confirmButtonColor:'#f97316', timer:1500, showConfirmButton:false });
+}
+
+// ===== GOOGLE SHEET INTEGRATION =====
+function sendToGoogleSheet(data, action) {
+  return new Promise((resolve, reject) => {
+    Swal.fire({ title:'กำลังบันทึก...', text:'กรุณารอสักครู่', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+    
+    const callbackName = 'callback_' + Math.random().toString(36).substr(2, 9);
+    
+    const timeout = setTimeout(() => {
+      if (window[callbackName]) delete window[callbackName];
+      const scriptEl = document.getElementById(callbackName);
+      if(scriptEl) scriptEl.remove();
+      Swal.fire({ 
+        icon:'error', 
+        title:'❌ เชื่อมต่อไม่ได้', 
+        html:'<p style="text-align:left; font-size:14px;"><strong>ตรวจสอบ:</strong><br>1. Deploy URL ใน Apps Script ถูกต้อง<br>2. เปิด Deploy แล้ว "Execute as" = Your Account<br>3. "Who has access" = "Anyone" หรือ "Anyone with the link"<br>4. URL ใหม่ที่สุด (จากปุ่ม Deploy ล่าสุด)<br><br><strong>วิธี Deploy:</strong><br>• Project Settings → "appsscript.json"<br>• Modify → Save<br>• Deploy → New Deployment → Type: Web app<br>• Copy Deployment ID และ URL<br>• Paste ใน APPS_SCRIPT_URL</p>',
+        confirmButtonColor:'#ef4444',
+        confirmButtonText:'ปิด',
+        width:'450px'
+      });
+      reject(new Error('Timeout'));
+    }, 20000);
+    
+    window[callbackName] = function(response) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      const scriptEl = document.getElementById(callbackName);
+      if(scriptEl) scriptEl.remove();
+      
+      if (response && response.status === 'success') {
+        Swal.fire({ icon:'success', title:'✅ บันทึกลง Google Sheet สำเร็จ!', confirmButtonColor:'#16a34a', timer:2000, showConfirmButton:false });
+        resolve(response);
+      } else {
+        const msg = response?.message || 'ไม่สามารถบันทึกได้';
+        Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: msg, confirmButtonColor:'#ef4444' });
+        reject(response);
+      }
+    };
+    
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    
+    try {
+      const params = new URLSearchParams({
+        action: action,
+        data: JSON.stringify(data),
+        callback: callbackName,
+        t: Date.now()
+      });
+      script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
+      console.log('Sending request to:', script.src);
+    } catch(e) {
+      console.error('URL creation error:', e);
+      clearTimeout(timeout);
+      Swal.fire({ icon:'error', title:'ข้อมูลใหญ่เกินไป', text:'ลองลดจำนวนข้อมูลลงบ้าง', confirmButtonColor:'#ef4444' });
+      return;
+    }
+    
+    script.onerror = function() {
+      clearTimeout(timeout);
+      if (window[callbackName]) delete window[callbackName];
+      script.remove();
+      console.error('Script load error');
+      Swal.fire({ 
+        icon:'error', 
+        title:'❌ เชื่อมต่อไม่ได้', 
+        text:'Deploy URL ไม่ถูกต้องหรือหมดเวลา',
+        confirmButtonColor:'#ef4444' 
+      });
+      reject(new Error('Network error'));
+    };
+    
+    document.body.appendChild(script);
+  });
+}
+
+function saveInstockToSheet() {
+  const date = document.getElementById('instockDate').value;
+  const entries = [];
+  products.forEach((p, i) => {
+    const val = parseInt(document.getElementById('instock_' + i)?.value) || 0;
+    if (val > 0) entries.push({ name: p, quantity: val });
+  });
+  if (entries.length === 0) { Swal.fire({ icon:'warning', title:'ไม่มีข้อมูลให้บันทึก', timer:2000 }); return; }
+  sendToGoogleSheet({ date, entries, branch:'สาขา อารีย์' }, 'saveInstock');
+}
+
+function saveOverstockToSheet() {
+  const date = document.getElementById('overstockDate').value;
+  const entries = [];
+  products.forEach((p, i) => {
+    const val = parseInt(document.getElementById('overstock_' + i)?.value) || 0;
+    if (val > 0) entries.push({ name: p, quantity: val });
+  });
+  if (entries.length === 0) { Swal.fire({ icon:'warning', title:'ไม่มีข้อมูลให้บันทึก', timer:2000 }); return; }
+  sendToGoogleSheet({ date, entries, branch:'สาขา อารีย์' }, 'saveOverstock');
+}
+
+function saveSalesToSheet() {
+  const date = document.getElementById('salesDate').value;
+  const change = parseFloat(document.getElementById('salesChange').value) || 0;
+  const transfer = parseFloat(document.getElementById('salesTransfer').value) || 0;
+  const cash = parseFloat(document.getElementById('salesCash').value) || 0;
+  const grab = parseFloat(document.getElementById('salesGrab').value) || 0;
+  const lineman = parseFloat(document.getElementById('salesLineman').value) || 0;
+  const shopee = parseFloat(document.getElementById('salesShopee').value) || 0;
+  const expenses = [];
+  document.querySelectorAll('#expenseList > div').forEach(row => {
+    const amt = parseFloat(row.querySelector('.expense-amount')?.value) || 0;
+    const note = row.querySelector('.expense-note')?.value || '';
+    if (amt > 0) expenses.push({ amount: amt, note });
+  });
+  sendToGoogleSheet({ date, change, transfer, cash, grab, lineman, shopee, expenses, branch:'สาขา อารีย์' }, 'saveSales');
+}
+
+function saveProductToSheet() {
+  if (products.length === 0) { Swal.fire({ icon:'warning', title:'ไม่มีสินค้าให้บันทึก', timer:2000 }); return; }
+  sendToGoogleSheet({ products, branch:'สาขา อารีย์' }, 'saveProducts');
+}
+
+// ===== FETCH FROM GOOGLE SHEET =====
+function promptAdminForSheetData() {
+  Swal.fire({
+    title: '🔐 ยืนยันตัวตนผู้ดูแล',
+    input: 'password',
+    inputPlaceholder: 'กรอกรหัสผู้ดูแล',
+    confirmButtonText: 'ยืนยัน',
+    confirmButtonColor: '#f97316',
+    showCancelButton: true,
+    cancelButtonText: 'ยกเลิก',
+    inputValidator: (value) => {
+      if (value !== ADMIN_CODE) return 'รหัสไม่ถูกต้อง!';
+    }
+  }).then((result) => {
+    if (result.isConfirmed) fetchFromGoogleSheet();
+  });
+}
+
+function fetchFromGoogleSheet() {
+  Swal.fire({ title:'กำลังดึงข้อมูล...', text:'กรุณารอสักครู่', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+  
+  const callbackName = 'fetch_' + Math.random().toString(36).substr(2, 9);
+  const payload = btoa(JSON.stringify({ action:'fetchAll' }));
+  
+  const timeout = setTimeout(() => {
+    delete window[callbackName];
+    const scriptEl = document.getElementById(callbackName);
+    if(scriptEl) scriptEl.remove();
+    Swal.fire({ icon:'error', title:'หมดเวลารอ', confirmButtonColor:'#ef4444' });
+  }, 10000);
+  
+  window[callbackName] = function(response) {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    const scriptEl = document.getElementById(callbackName);
+    if(scriptEl) scriptEl.remove();
+    
+    if (response && response.status === 'success' && response.data) {
+      const sheetProducts = response.data.products || [];
+      sheetProducts.forEach(p => { if (!products.includes(p)) products.push(p); });
+      localStorage.setItem('stock_products', JSON.stringify(products));
+      
+      if (response.data.instock) {
+        instockData = response.data.instock;
+        localStorage.setItem('stock_instock', JSON.stringify(instockData));
+      }
+      if (response.data.overstock) {
+        overstockData = response.data.overstock;
+        localStorage.setItem('stock_overstock', JSON.stringify(overstockData));
+      }
+      if (response.data.sales) {
+        salesData = response.data.sales;
+        localStorage.setItem('stock_sales', JSON.stringify(salesData));
+      }
+      
+      renderProducts();
+      updateStats();
+      Swal.fire({ icon:'success', title:'ดึงข้อมูลสำเร็จ!', text:`พบสินค้า ${sheetProducts.length} รายการ`, confirmButtonColor:'#16a34a', timer:2500 });
+    } else {
+      Swal.fire({ icon:'info', title:'ไม่พบข้อมูล', text:'อาจยังไม่มีข้อมูลใน Google Sheet', confirmButtonColor:'#f97316' });
+    }
+  };
+  
+  const script = document.createElement('script');
+  script.id = callbackName;
+  script.src = `${APPS_SCRIPT_URL}?callback=${callbackName}&payload=${payload}`;
+  script.onerror = function() {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    script.remove();
+    Swal.fire({ icon:'error', title:'เชื่อมต่อไม่ได้', confirmButtonColor:'#ef4444' });
+  };
+  document.body.appendChild(script);
+}
+
+// ===== STATS & REPORT =====
+function updateStats() {
+  const todayInstockCount = instockData.reduce((s, r) => s + (r.entries?.length || 0), 0);
+  const todayOverstockCount = overstockData.reduce((s, r) => s + (r.entries?.length || 0), 0);
+  const totalSales = (salesData.cash || 0) + (salesData.transfer || 0) + (salesData.grab || 0) + (salesData.lineman || 0) + (salesData.shopee || 0);
+  
+  const el1 = document.getElementById('statInstock');
+  const el2 = document.getElementById('statOverstock');
+  const el3 = document.getElementById('statSales');
+  const el4 = document.getElementById('statProducts');
+  if(el1) el1.textContent = todayInstockCount + ' รายการ';
+  if(el2) el2.textContent = todayOverstockCount + ' รายการ';
+  if(el3) el3.textContent = '฿' + totalSales.toLocaleString();
+  if(el4) el4.textContent = products.length + ' รายการ';
+  
+  // Recent activity
+  const activity = document.getElementById('recentActivity');
+  if (activity) {
+    const items = [];
+    if (instockData.length > 0) items.push(`📥 บันทึกสินค้าเข้า ${todayInstockCount} รายการ`);
+    if (overstockData.length > 0) items.push(`📦 บันทึกสินค้าคงเหลือ ${todayOverstockCount} รายการ`);
+    if (salesData.cash || salesData.transfer || salesData.grab || salesData.lineman || salesData.shopee) items.push(`💰 ยอดขาย ฿${totalSales.toLocaleString()}`);
+    if (items.length > 0) {
+      activity.innerHTML = items.map(it => `<div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600">${it}</div>`).join('');
+    }
+  }
+}
+
+function renderReport() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('reportDate').value = today;
+  loadReportByDate(today);
+}
+
+function loadTodayReport() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('reportDate').value = today;
+  loadReportByDate(today);
+}
+
+function loadReportByDate(selectedDate) {
+  const dateToLoad = selectedDate || document.getElementById('reportDate').value;
+  if (!dateToLoad) {
+    Swal.fire({ icon:'warning', title:'กรุณาเลือกวันที่', confirmButtonColor:'#f97316', timer:2000 });
+    return;
+  }
+  
+  // Find sales data for this date
+  let salesForDate = { cash: 0, transfer: 0, change: 0, grab: 0, lineman: 0, shopee: 0, expenses: [], totalExpense: 0 };
+  if (salesData && salesData.date === dateToLoad) {
+    salesForDate = { ...salesData };
+  }
+  
+  // Find instock data for this date
+  let instockForDate = [];
+  instockData.forEach(record => {
+    if (record.date === dateToLoad && record.entries) {
+      instockForDate.push(...record.entries);
+    }
+  });
+  
+  // Find overstock data for this date
+  let overstockForDate = [];
+  overstockData.forEach(record => {
+    if (record.date === dateToLoad && record.entries) {
+      overstockForDate.push(...record.entries);
+    }
+  });
+  
+  // Update UI
+  const cash = salesForDate.cash || 0;
+  const transfer = salesForDate.transfer || 0;
+  const change = salesForDate.change || 0;
+  const grab = salesForDate.grab || 0;
+  const lineman = salesForDate.lineman || 0;
+  const shopee = salesForDate.shopee || 0;
+  const totalExp = salesForDate.totalExpense || 0;
+  const totalIncome = cash + transfer + grab + lineman + shopee;
+  
+  document.getElementById('rptCash').textContent = '฿' + cash.toLocaleString();
+  document.getElementById('rptTransfer').textContent = '฿' + transfer.toLocaleString();
+  document.getElementById('rptChange').textContent = '฿' + change.toLocaleString();
+  document.getElementById('rptGrab').textContent = '฿' + grab.toLocaleString();
+  document.getElementById('rptLineman').textContent = '฿' + lineman.toLocaleString();
+  document.getElementById('rptShopee').textContent = '฿' + shopee.toLocaleString();
+  document.getElementById('rptExpense').textContent = '฿' + totalExp.toLocaleString();
+  document.getElementById('rptTotal').textContent = '฿' + (totalIncome - totalExp).toLocaleString();
+  
+  // Instock
+  const rptIn = document.getElementById('rptInstock');
+  if (instockForDate.length > 0) {
+    rptIn.innerHTML = instockForDate.map(e => `<div class="flex justify-between bg-green-50 rounded px-3 py-1"><span>${e.name}</span><span class="font-semibold text-green-700">${e.quantity}</span></div>`).join('');
+  } else {
+    rptIn.innerHTML = '<p class="text-gray-400 text-center py-2">ไม่มีข้อมูล</p>';
+  }
+  
+  // Overstock
+  const rptOver = document.getElementById('rptOverstock');
+  if (overstockForDate.length > 0) {
+    rptOver.innerHTML = overstockForDate.map(e => `<div class="flex justify-between bg-orange-50 rounded px-3 py-1"><span>${e.name}</span><span class="font-semibold text-orange-700">${e.quantity}</span></div>`).join('');
+  } else {
+    rptOver.innerHTML = '<p class="text-gray-400 text-center py-2">ไม่มีข้อมูล</p>';
+  }
+  
+  // Charts
+  renderCharts(cash, transfer, change, grab, lineman, shopee, totalExp);
+}
+
+function renderCharts(cash, transfer, change, grab, lineman, shopee, totalExp) {
+  // Bar chart
+  const barCtx = document.getElementById('salesChart');
+  if (salesChartInstance) salesChartInstance.destroy();
+  salesChartInstance = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['เงินสด', 'Grab', 'Lineman', 'Shopee', 'ยอดโอน', 'เงินทอน', 'ค่าใช้จ่าย'],
+      datasets: [{
+        label: 'จำนวนเงิน (฿)',
+        data: [cash, grab, lineman, shopee, transfer, change, totalExp],
+        backgroundColor: ['#22c55e', '#fbbf24', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#ef4444'],
+        borderRadius: 8
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+  
+  // Pie chart
+  const pieCtx = document.getElementById('pieChart');
+  if (pieChartInstance) pieChartInstance.destroy();
+  const total = cash + transfer + grab + lineman + shopee;
+  pieChartInstance = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['เงินสด', 'Grab', 'Lineman', 'Shopee', 'ยอดโอน'],
+      datasets: [{
+        data: total > 0 ? [cash, grab, lineman, shopee, transfer] : [1, 1, 1, 1, 1],
+        backgroundColor: ['#22c55e', '#fbbf24', '#f59e0b', '#ec4899', '#3b82f6'],
+        borderWidth: 2
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ee4279eb25f256b',t:'MTc3NjUyMDM5Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
