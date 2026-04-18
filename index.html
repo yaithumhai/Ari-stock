@@ -261,7 +261,25 @@ function updateProductUI(response) {
     if (response.status === 'success') {
         state.products = response.products; // อัปเดตรายชื่อสินค้าในระบบ
         renderProducts(); // ฟังก์ชันเดิมในโค้ดคุณที่ใช้วาดรายการสินค้า
-        console.log('ข้อมูลอัปเดตล่าสุดเมื่อ: ' + new Date().toLocaleTimeString());
+        // ฟังก์ชันโหลดสินค้าจาก Google Sheet
+function loadProductsFromSheet() {
+    const script = document.createElement('script');
+    // ส่ง action=getProducts ไปที่ Apps Script
+    script.src = `${APPS_SCRIPT_URL}?action=getProducts&callback=handleProductResponse`;
+    document.body.appendChild(script);
+}
+
+// ฟังก์ชันรับข้อมูล
+function handleProductResponse(response) {
+    if (response.status === 'success' && response.products) {
+        state.products = response.products; // เอาชื่อสินค้าจาก Sheet มาใส่ในระบบ
+        renderProducts(); // วาดรายการสินค้าใหม่บนหน้าจอ
+        console.log("อัปเดตข้อมูลสินค้าล่าสุดเรียบร้อย");
+    }
+}
+
+// เรียกใช้เมื่อโหลดหน้าเว็บ
+window.addEventListener('load', loadProductsFromSheet);
     }
 }
 
